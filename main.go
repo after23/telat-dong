@@ -5,11 +5,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
 )
+
+const prefix string = "!telat"
 
 func errHandler(message string, err error) {
 	if err != nil {
@@ -28,7 +31,12 @@ func main() {
 		if m.Author.ID == s.State.User.ID {
 			return
 		}
-		if m.Content == "hello" {
+		args := strings.Split(m.Content, " ")
+		if args[0] != prefix{
+			return
+		}
+
+		if args[1] == "hello" {
 			s.ChannelMessageSend(m.ChannelID, "world!")
 		}
 	})
