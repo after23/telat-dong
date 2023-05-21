@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
@@ -20,13 +19,67 @@ func errHandler(message string, err error) {
 	}
 }
 
-func main() {
+var sess *discordgo.Session
+var config util.Config
+
+var (
+	integerOptionMinValue = 1.0
+	dmPermission = false
+	defaultMemberPermission int64 = discordgo.PermissionManageServer
+
+	commands = []*discordgo.ApplicationCommand{
+		{
+			Name: "basic-command",
+			Description: "basic-command",
+		},
+		{
+			Name: "hello",
+			Description: "world!",
+		},
+	}
+	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
+		"basic-command": func(s *discordgo.Session, i *discordgo.InteractionCreate){
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "yeow",
+				},
+			})
+		},
+		"hello": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "world",
+				},
+			})
+		},
+	}
+)
+
+
+func init() {
+	
 	config, err := util.LoadConfig(".")
 	errHandler("Failed to read config file : ", err)
-
-	sess, err := discordgo.New("Bot "+config.Token)
+	
+	sess, err = discordgo.New("Bot "+config.Token)
 	errHandler("Failed to connect to the discord bot : ",err)
+}
 
+func init() {
+	sess.AddHandler(func(sess *discordgo.Session, i *discordgo.InteractionCreate) {
+		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
+			h(sess, i)
+		}
+	})
+}
+
+func main() {
+	sess.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
+	})
+		
 	sess.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate){
 		if m.Author.ID == s.State.User.ID {
 			return
@@ -35,7 +88,7 @@ func main() {
 		if args[0] != prefix{
 			return
 		}
-
+	
 		if args[1] == "hello" {
 			s.ChannelMessageSend(m.ChannelID, "world!")
 		}
@@ -43,13 +96,29 @@ func main() {
 
 	sess.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
 
-	err = sess.Open()
+	err := sess.Open()
 	errHandler("Failed to open session : ",err)
+	log.Println("Adding commands...")
+	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
+	for i, v := range commands {
+		cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, config.PlaygroundID, v)
+		if err != nil {
+			log.Panicf("Cannot create '%v' command: %v", v.Name, err)
+		}
+		registeredCommands[i] = cmd
+	}
 	defer sess.Close()
 
 	fmt.Println("yeow")
 
 	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(sc, os.Interrupt)
 	<-sc
+
+	for _, v := range registeredCommands {
+			err := sess.ApplicationCommandDelete(sess.State.User.ID, config.PlaygroundID, v.ID)
+			if err != nil {
+				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
+			}
+		}
 }

@@ -4,6 +4,7 @@ import "github.com/spf13/viper"
 
 type Config struct {
 	Token string `mapstructure:"BOT_TOKEN"`
+	PlaygroundID string `mapstructure:"PLAYGROUND_ID"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
