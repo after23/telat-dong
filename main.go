@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
+	"github.com/after23/telat-dong/handlers"
 	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
 )
@@ -29,8 +31,8 @@ var (
 
 	commands = []*discordgo.ApplicationCommand{
 		{
-			Name: "basic-command",
-			Description: "basic-command",
+			Name: "absen",
+			Description: "test",
 		},
 		{
 			Name: "hello",
@@ -38,22 +40,8 @@ var (
 		},
 	}
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"basic-command": func(s *discordgo.Session, i *discordgo.InteractionCreate){
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "yeow",
-				},
-			})
-		},
-		"hello": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "world",
-				},
-			})
-		},
+		"absen": handlers.Absen,
+		"hello": handlers.Hello,
 	}
 )
 
@@ -91,6 +79,21 @@ func main() {
 	
 		if args[1] == "hello" {
 			s.ChannelMessageSend(m.ChannelID, "world!")
+		}
+
+		if args[1] == "image"{
+			embed := &discordgo.MessageEmbed{
+				Title: "Example Embed",
+				Description: "This is an example of sending a MessageEmbed with an image in the response data.",
+				Image: &discordgo.MessageEmbedImage{
+					URL: "https://media.discordapp.net/attachments/1112298002938347550/1112298674870042634/image.png", // URL of the image
+				},
+				Timestamp: time.Now().Format(time.RFC3339),
+			}
+			_, err := s.ChannelMessageSendEmbed(m.ChannelID, embed)
+				if err != nil {
+					fmt.Println("Error sending message:", err)
+			}
 		}
 	})
 
