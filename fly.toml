@@ -1,0 +1,12 @@
+# fly.toml app configuration file generated for telat-dong on 2023-05-30T15:56:17+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "telat-dong"
+kill_signal = "SIGINT"
+kill_timout = 5
+processes = []
+primary_region = "sin"
+
+[env]
