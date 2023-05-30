@@ -2,13 +2,23 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
+
+const (
+	Success = iota
+	Failed
+)
+
+type Result struct {
+	Status int
+	Message string
+}
 
 func Hello(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -35,26 +45,44 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	})
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go absen(&wg, s, i.Interaction, "https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
+	ch := make(chan Result)
+	go absen(&wg, ch, s, i.Interaction, "https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
 	wg.Wait()
+
+	res := <- ch
 	embeds[0].Description = "Status: Finished"
+	if res.Status == Failed {
+		embeds[0].Description = fmt.Sprintf("Status: Failed\n %s", res.Message)
+	}
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &embeds,
 	})
 }
 
-func absen(wg *sync.WaitGroup, s *discordgo.Session , i *discordgo.Interaction, url string ) {
+func absen(wg *sync.WaitGroup, ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, url string ) {
 		// Make an HTTP request to retrieve the image.
 		resp, err := http.Get(url)
+		var res Result
 		if err != nil {
 			// fmt.Println("Error retrieving image:", err)
 			wg.Done()
-			log.Panic("Error doing http request ", err)
+			res.Status = Failed
+			res.Message = fmt.Sprintf("Error doing http request: %v", err)
+			ch <- res
+			return
+			// log.Panic("Error doing http request ", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			wg.Done()
-			log.Panic("somehing went oopsies ", err)
+			body,_ := ioutil.ReadAll(resp.Body)
+			res = Result{
+				Status: Failed,
+				Message: fmt.Sprintf("Something went oopsies: %d - %s", resp.StatusCode, string(body)),
+			}
+			ch <- res
+			return
+			// log.Panic(fmt.Sprintf("Something went oopsies: %d - %s", resp.StatusCode, string(body)), nil)
 		}
 
 		// The image request has resolved successfully.
@@ -64,35 +92,51 @@ func absen(wg *sync.WaitGroup, s *discordgo.Session , i *discordgo.Interaction, 
 		msg, err := s.ChannelFileSend("1112298002938347550" , "image.png", resp.Body)
 		if err != nil {
 			wg.Done()
-			log.Panic("error sending image :", err)
+			res = Result{
+				Status: Failed,
+				Message: fmt.Sprintf("error sending image: %v", err),
+			}
+			ch <- res
+			return
+			// log.Panic("error sending image :", err)
 		}
+
+		imageURL := msg.Attachments[0].URL
+
+		err = s.ChannelMessageDelete("1112298002938347550", msg.ID)
+		
+		if err != nil {
+			res = Result{
+				Status: Failed,
+				Message: fmt.Sprintf("Failed Deleting Message %v", err),
+			}
+			return
+		}
+		// util.ErrHandler("Failed Deleting Message", err)
 
 		embed := &discordgo.MessageEmbed{
 				Title: "Absen Result",
 				Description: "Success",
 				Image: &discordgo.MessageEmbedImage{
-					URL: msg.Attachments[0].URL, // URL of the image
+					URL: imageURL, // URL of the image
 				},
 				Timestamp: time.Now().Format(time.RFC3339),
 			}
-		_, err = s.ChannelMessageSendEmbed("1109748811405983786", embed)
+		_, err = s.ChannelMessageSendEmbed(i.ChannelID, embed)
 			if err != nil {
-				fmt.Println("Error sending message:", err)
+				res = Result{
+					Status: Failed,
+					Message: fmt.Sprintf("error sending Message Embed: %v", err),
+				}
+				ch <- res
+				return
+				// fmt.Println("Error sending message:", err)
 		}
+		res = Result{
+			Status: Success,
+			Message: "",
+		}
+		ch <- res
 		wg.Done()
 
-		// embed = &discordgo.MessageEmbed{
-		// Title: "Absen",
-		// Description: "Status : Processing",
-		// Timestamp: time.Now().Format(time.RFC3339),
-		// }
-
-		// embeds := []*discordgo.MessageEmbed{embed}
-
-		// updateResponse := &discordgo.WebhookEdit{
-		// 	Embeds: &embeds,
-		// }
-		
-		// s.InteractionResponseEdit(i, updateResponse)		
-		// return attachment.URL
 }
