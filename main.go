@@ -15,12 +15,6 @@ import (
 
 const prefix string = "!telat"
 
-func errHandler(message string, err error) {
-	if err != nil {
-		log.Panic(message, err)
-	}
-}
-
 var sess *discordgo.Session
 var config util.Config
 
@@ -61,7 +55,7 @@ var (
 		// 	},
 		// },
 	}
-	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
+	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config){
 		"absen": handlers.Absen,
 		"hello": handlers.Hello,
 		// "responses": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -129,16 +123,16 @@ var (
 func init() {
 	
 	config, err := util.LoadConfig(".")
-	errHandler("Failed to read config file : ", err)
+	util.ErrHandler("Failed to read config file : ", err)
 	
 	sess, err = discordgo.New("Bot "+config.Token)
-	errHandler("Failed to connect to the discord bot : ",err)
+	util.ErrHandler("Failed to connect to the discord bot : ",err)
 }
 
 func init() {
 	sess.AddHandler(func(sess *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(sess, i)
+			h(sess, i, &config)
 		}
 	})
 }
@@ -163,8 +157,8 @@ func main() {
 
 		if args[1] == "image"{
 			embed := &discordgo.MessageEmbed{
-				Title: "Example Embed",
-				Description: "This is an example of sending a MessageEmbed with an image in the response data.",
+				Title: "coba image",
+				Description: "image embed",
 				Image: &discordgo.MessageEmbedImage{
 					URL: "https://media.discordapp.net/attachments/1112298002938347550/1112298674870042634/image.png", // URL of the image
 				},
@@ -175,18 +169,23 @@ func main() {
 					fmt.Println("Error sending message:", err)
 			}
 		}
+
+		if args[1] == "absen"{
+			handlers.TempAbsen(s, m.ChannelID, m.Author.ID, &config)
+		}
 	})
 
 	sess.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
 
 	err := sess.Open()
-	errHandler("Failed to open session : ",err)
+	util.ErrHandler("Failed to open session : ",err)
 	log.Println("Adding commands...")
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
 		cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, config.PlaygroundID, v)
 		if err != nil {
-			log.Panicf("Cannot create '%v' command: %v", v.Name, err)
+			log.Printf("Cannot create '%v' command: %v.\nSkipping slash command.", v.Name, err)
+			break
 		}
 		registeredCommands[i] = cmd
 	}
@@ -199,7 +198,7 @@ func main() {
 	<-sc
 
 	for _, v := range registeredCommands {
-			err := sess.ApplicationCommandDelete(sess.State.User.ID, config.PlaygroundID, v.ID)
+			err := sess.ApplicationCommandDelete(sess.State.User.ID, config.NFGuildID, v.ID)
 			if err != nil {
 				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 			}

@@ -3,134 +3,103 @@ package handlers
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
 )
 
-const (
-	Success = iota
-	Failed
-)
-
-type Result struct {
-	Status int
-	Message string
-}
-
-func Hello(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "Heya",
-		},
-	})
-}
-
-func Absen(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Member.User.ID != "188656104673247232"{
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "siape lo",
-			},
-		})
+func initMessageEmbedEdit(s *discordgo.Session, channelID string, messageID string, embed *discordgo.MessageEmbed, res Result) {
+	newDesc := fmt.Sprintf("Status: %s", statusMap[res.Status])
+	if res.Status == Failed{
+		newDesc += fmt.Sprintf("\n%v", res.Message)
+	}
+	embed.Description = newDesc
+	embed.Timestamp = time.Now().Format(time.RFC3339)
+	_,err := s.ChannelMessageEditEmbed(channelID, messageID, embed)
+	if (err != nil){
+		log.Println(err)
 		return
 	}
-	embed := &discordgo.MessageEmbed{
-		Title: "Absen",
-		Description: "Status: Processing",
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-	embeds := []*discordgo.MessageEmbed{embed}
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Embeds: embeds,
-		},
-	})
-	ch := make(chan Result)
-	go absen(ch, s, i.Interaction, "https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
-
-	res := <- ch
-	embeds[0].Description = "Status: Finished"
-	if res.Status == Failed {
-		embeds[0].Description = fmt.Sprintf("Status: Failed\n %s", res.Message)
-	}
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Embeds: &embeds,
-	})
 }
 
-func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, url string ) {
-	// Make an HTTP request to retrieve the image.
-	resp, err := http.Get(url)
-	var res Result
+func TempAbsen(s *discordgo.Session, channelID string, author_id string, config *util.Config) {
+	//author validation
+	if author_id != "188656104673247232" {
+		embed := &discordgo.MessageEmbed{
+			Title: "gk dlu",
+			Image: &discordgo.MessageEmbedImage{
+				URL: "https://cdn.discordapp.com/attachments/1112298002938347550/1113268135169118208/gdlu.jpg", // URL of the image
+			},
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
+		_, err := s.ChannelMessageSendEmbed(channelID, embed)
+		if err != nil {
+			log.Println("Error sending MessageEmbed: ", err)
+			return
+		}
+		return
+	}
+	
+	embed := &discordgo.MessageEmbed{
+		Title:       "Absen",
+		Description: "Status: Processing...",
+	}
+
+	//initial message
+	msg, err := s.ChannelMessageSendEmbed(channelID, embed)
 	if err != nil {
-		res.Status = Failed
-		res.Message = fmt.Sprintf("Error doing http request: %v", err)
-		ch <- res
+		log.Println("Error sending MessageEmbed: ", err)
+		return
+	}
+
+	client := http.Client{
+		Timeout: 6 * time.Minute,
+	}
+	var res Result
+	//get request to the service
+	resp, err := client.Get("https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
+	if err != nil {
+		res.Status=Failed
+		res.Message=(fmt.Sprintf("Error doing Get Request: %v", err))
+		initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body,_ := ioutil.ReadAll(resp.Body)
-		res = Result{
-			Status: Failed,
-			Message: fmt.Sprintf("Something went oopsies: %d - %s", resp.StatusCode, string(body)),
-		}
-		ch <- res
+		res.Status=Failed
+		res.Message=fmt.Sprintf("Error - %d:\n%v", resp.StatusCode, string(body))
+		initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
 		return
 	}
-
 	// The image request has resolved successfully.
 	fmt.Println("Image request resolved.")
 
 	// Upload the file to Discord and get the attachment URL.
-	msg, err := s.ChannelFileSend("1112298002938347550" , "image.png", resp.Body)
+	image, err := s.ChannelFileSend(config.ImageDumpID, "image.png", resp.Body)
 	if err != nil {
-		res = Result{
-			Status: Failed,
-			Message: fmt.Sprintf("error sending image: %v", err),
-		}
-		ch <- res
 		return
 	}
+	imageURL := image.Attachments[0].URL
 
-	imageURL := msg.Attachments[0].URL
-
-	err = s.ChannelMessageDelete("1112298002938347550", msg.ID)
-	
+	err = s.ChannelMessageDelete(config.ImageDumpID, msg.ID)
+	messageEmbed := &discordgo.MessageEmbed{
+		Title:       "Absen Result",
+		Description: "Success",
+		Image: &discordgo.MessageEmbedImage{
+			URL: imageURL, // URL of the image
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	_, err = s.ChannelMessageSendEmbed(channelID, messageEmbed)
 	if err != nil {
-		res = Result{
-			Status: Failed,
-			Message: fmt.Sprintf("Failed Deleting Message %v", err),
-		}
+		log.Println("Error sending embed message(result): ", err)
 		return
 	}
-
-	embed := &discordgo.MessageEmbed{
-			Title: "Absen Result",
-			Description: "Success",
-			Image: &discordgo.MessageEmbedImage{
-				URL: imageURL, // URL of the image
-			},
-			Timestamp: time.Now().Format(time.RFC3339),
-		}
-	_, err = s.ChannelMessageSendEmbed(i.ChannelID, embed)
-		if err != nil {
-			res = Result{
-				Status: Failed,
-				Message: fmt.Sprintf("error sending Message Embed: %v", err),
-			}
-			ch <- res
-			return
-	}
-	res = Result{
-		Status: Success,
-		Message: "",
-	}
-	ch <- res
+	res.Status=Success
+	initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
 
 }
