@@ -7,9 +7,6 @@ RUN go build -o main main.go
 FROM alpine:3.18
 WORKDIR /app
 COPY --from=builder /app/main .
-RUN touch app.env
-RUN echo BOT_TOKEN=SANGATRAHASIA >> app.env
-RUN echo PLAYGROUND_ID=123 >> app.env
-
+COPY dummy.env ./app.env
 
 CMD [ "/app/main" ]
