@@ -173,6 +173,10 @@ func main() {
 		if args[1] == "absen"{
 			handlers.TempAbsen(s, m.ChannelID, m.Author.ID, &config)
 		}
+
+		if args[1] == "ping"{
+			handlers.Ping(s, m.ChannelID)
+		}
 	})
 
 	sess.Identify.Intents = discordgo.IntentsAllWithoutPrivileged

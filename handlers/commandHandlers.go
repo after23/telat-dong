@@ -103,3 +103,40 @@ func TempAbsen(s *discordgo.Session, channelID string, author_id string, config 
 	initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
 
 }
+
+func Ping(s *discordgo.Session, channelID string) {
+	embed := &discordgo.MessageEmbed{}
+	embed.Title = "Pinging the Service"
+	embed.Description = "Status: Processing.."
+	embed.Timestamp = time.Now().Format(time.RFC3339)
+
+	msg, err := s.ChannelMessageSendEmbed(channelID, embed)
+	if err != nil {
+		log.Println("Error sending embed message: ", err)
+	}
+
+	client := http.Client{
+		Timeout: 5 * time.Minute,
+	}
+
+	resp, err := client.Get("https://telat-api.onrender.com/ping")
+	if err != nil {
+		embed.Description = fmt.Sprintf("Status: Failed\n%v", err)
+		embed.Timestamp = time.Now().Format(time.RFC3339)
+		s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		embed.Description = fmt.Sprintf("Status: Failed\n HTTP %d\n%v", resp.StatusCode, string(body))
+		embed.Timestamp = time.Now().Format(time.RFC3339)
+		s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
+	}
+
+	defer resp.Body.Close()
+	body,_ := ioutil.ReadAll(resp.Body)
+	embed.Description = fmt.Sprintf("Status: Success\n%s", string(body))
+	embed.Timestamp = time.Now().Format(time.RFC3339)
+	s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
+}
