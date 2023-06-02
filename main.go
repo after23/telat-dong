@@ -31,6 +31,10 @@ var (
 		{
 			Name: "hello",
 			Description: "testing",
+		}, 
+		{
+			Name: "ping",
+			Description: "Bangunin service",
 		},
 		// {
 		// 	Name: "responses",
@@ -58,6 +62,7 @@ var (
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config){
 		"absen": handlers.Absen,
 		"hello": handlers.Hello,
+		"ping": handlers.SlashPing,
 		// "responses": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		// 	// Responses to a command are very important.
 		// 	// First of all, because you need to react to the interaction

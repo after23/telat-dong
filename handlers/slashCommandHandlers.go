@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -128,5 +129,61 @@ func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, im
 	}
 	ch <- res
 
+}
+
+func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config){
+	embed := &discordgo.MessageEmbed{
+		Title: "Pinging the Service",
+		Description: "Status: Processing..",
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	embeds := []*discordgo.MessageEmbed{embed}
+
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: embeds,
+		},
+	})
+
+	if err != nil {
+		log.Println("Failed Sending interaction response: ", err)
+		return
+	}
+
+	client := http.Client{
+		Timeout: 5 * time.Minute,
+	}
+
+	resp, err := client.Get("https://telat-api.onrender.com/ping")
+	if err != nil {
+		embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &embeds,
+		})
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		embeds[0].Description = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &embeds,
+		})
+		return
+	}
+
+	body,err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
+		return
+	}
+
+	embeds[0].Description = fmt.Sprintf("Status: Success\n%s", string(body))
+	embeds[0].Timestamp = time.Now().Format(time.RFC3339)
+	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Embeds: &embeds,
+	})
+	return
 }
 
