@@ -152,38 +152,79 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *uti
 		return
 	}
 
-	client := http.Client{
-		Timeout: 5 * time.Minute,
-	}
+	ch := make(chan Result)
+	go ping(ch)
+	defer close(ch)
 
-	resp, err := client.Get("https://telat-api.onrender.com/ping")
-	if err != nil {
-		embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &embeds,
-		})
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		embeds[0].Description = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &embeds,
-		})
-		return
-	}
+	// client := http.Client{
+	// 	Timeout: 5 * time.Minute,
+	// }
 
-	body,err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
-		return
-	}
+	// resp, err := client.Get("https://telat-api.onrender.com/ping")
+	// if err != nil {
+	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
+	// 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	// 		Embeds: &embeds,
+	// 	})
+	// 	return
+	// }
+	// defer resp.Body.Close()
+	// if resp.StatusCode != http.StatusOK {
+	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
+	// 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	// 		Embeds: &embeds,
+	// 	})
+	// 	return
+	// }
 
-	embeds[0].Description = fmt.Sprintf("Status: Success\n%s", string(body))
+	// body,err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
+	// 	return
+	// }
+	res := <- ch
+	embeds[0].Description = res.Message
 	embeds[0].Timestamp = time.Now().Format(time.RFC3339)
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &embeds,
 	})
+	return
+}
+
+func ping(ch chan<- Result){
+	client := http.Client{
+		Timeout: 5 * time.Minute,
+	}
+
+	var res Result
+
+	resp, err := client.Get("https://telat-api.onrender.com/ping")
+	if err != nil {
+		res.Status = Failed
+		res.Message = fmt.Sprintf("Status: Failed\n%v", err)
+		ch <- res
+		return
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK{
+		res.Status = Failed
+		res.Message = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
+		ch <- res
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		res.Status = Failed
+		res.Message = fmt.Sprintf("Status: Failed\n%v", err)
+		ch <- res
+		return
+	}
+
+	res.Status = Success
+	res.Message = fmt.Sprintf("Status: Success\n%s", string(body))
+	ch <- res
 	return
 }
 
