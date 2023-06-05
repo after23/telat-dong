@@ -253,6 +253,11 @@ func status(s *discordgo.Session,ch chan <- Result){
 	}
 	imgUrl := msg.Attachments[0].URL
 
+	err = s.ChannelMessageDelete(util.Conf().ImageDumpID, msg.ID)
+	if err != nil {
+		log.Println("Failed to delete message: ", err)
+	}
+
 	res.Status=Success
 	res.Message="Status: Success"
 	res.URL=imgUrl
