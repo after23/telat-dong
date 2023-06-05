@@ -146,7 +146,6 @@ func main() {
 	sess.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
 	})
-		
 	sess.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate){
 		if m.Author.ID == s.State.User.ID {
 			return
@@ -182,6 +181,9 @@ func main() {
 		if args[1] == "ping"{
 			handlers.Ping(s, m.ChannelID)
 		}
+		if args[1] == "status"{
+			handlers.Status(s, m.ChannelID, m.Author.ID)
+		}
 		if args[1] == "skip"{
 			handlers.Skip(s, m.ChannelID)
 		}
@@ -191,16 +193,16 @@ func main() {
 
 	err := sess.Open()
 	util.ErrHandler("Failed to open session : ",err)
-	log.Println("Adding commands...")
-	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
-	for i, v := range commands {
-		cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, config.PlaygroundID, v)
-		if err != nil {
-			log.Printf("Cannot create '%v' command: %v.\nSkipping slash command.", v.Name, err)
-			break
-		}
-		registeredCommands[i] = cmd
-	}
+	// log.Println("Adding commands...")
+	// registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
+	// for i, v := range commands {
+	// 	cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, config.PlaygroundID, v)
+	// 	if err != nil {
+	// 		log.Printf("Cannot create '%v' command: %v.\nSkipping slash command.", v.Name, err)
+	// 		break
+	// 	}
+	// 	registeredCommands[i] = cmd
+	// }
 	defer sess.Close()
 
 	fmt.Println("yeow")
@@ -209,10 +211,10 @@ func main() {
 	signal.Notify(sc, os.Interrupt)
 	<-sc
 
-	for _, v := range registeredCommands {
-			err := sess.ApplicationCommandDelete(sess.State.User.ID, config.NFGuildID, v.ID)
-			if err != nil {
-				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
-			}
-		}
+	// for _, v := range registeredCommands {
+	// 		err := sess.ApplicationCommandDelete(sess.State.User.ID, config.NFGuildID, v.ID)
+	// 		if err != nil {
+	// 			log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
+	// 		}
+	// 	}
 }

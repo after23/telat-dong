@@ -10,6 +10,8 @@ type Config struct {
 	NFGuildID string `mapstructure:"NF_GUILD_ID"`
 }
 
+var conf Config
+
 func LoadConfig(path string) (config Config, err error) {
 	viper.AddConfigPath(path)
 	viper.SetConfigName("app")
@@ -23,5 +25,10 @@ func LoadConfig(path string) (config Config, err error) {
 	}
 
 	err = viper.Unmarshal(&config)
+	err = viper.Unmarshal(&conf)
 	return
+}
+
+func Conf() Config{
+	return conf
 }
