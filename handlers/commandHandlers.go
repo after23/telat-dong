@@ -33,18 +33,7 @@ func initMessageEmbedEdit(s *discordgo.Session, channelID string, messageID stri
 func TempAbsen(s *discordgo.Session, channelID string, author_id string, config *util.Config) {
 	//author validation
 	if author_id != util.Conf().MyID {
-		embed := &discordgo.MessageEmbed{
-			Title: "gk dlu",
-			Image: &discordgo.MessageEmbedImage{
-				URL: "https://cdn.discordapp.com/attachments/1112298002938347550/1113268135169118208/gdlu.jpg", // URL of the image
-			},
-			Timestamp: time.Now().Format(time.RFC3339),
-		}
-		_, err := s.ChannelMessageSendEmbed(channelID, embed)
-		if err != nil {
-			log.Println("Error sending MessageEmbed: ", err)
-			return
-		}
+		Skip(s, channelID)
 		return
 	}
 	
