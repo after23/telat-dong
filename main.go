@@ -182,6 +182,9 @@ func main() {
 		if args[1] == "ping"{
 			handlers.Ping(s, m.ChannelID)
 		}
+		if args[1] == "skip"{
+			handlers.Skip(s, m.ChannelID)
+		}
 	})
 
 	sess.Identify.Intents = discordgo.IntentsAllWithoutPrivileged

@@ -140,3 +140,21 @@ func Ping(s *discordgo.Session, channelID string) {
 	embed.Timestamp = time.Now().Format(time.RFC3339)
 	s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
 }
+
+func Skip(s *discordgo.Session, channelID string) {
+
+	embed := &discordgo.MessageEmbed{
+		Title: "skip",
+		Image: &discordgo.MessageEmbedImage{
+			URL: "https://cdn.discordapp.com/attachments/1112298002938347550/1113268135169118208/gdlu.jpg", // URL of the image
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	_, err := s.ChannelMessageSendEmbed(channelID, embed)
+	if err != nil {
+		log.Println("Error sending MessageEmbed: ", err)
+		return
+	}
+	return
+	
+}
