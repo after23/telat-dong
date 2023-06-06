@@ -79,7 +79,7 @@ func TempAbsen(s *discordgo.Session, channelID string, author_id string, config 
 	}
 	imageURL := image.Attachments[0].URL
 
-	err = s.ChannelMessageDelete(util.Conf().ImageDumpID, msg.ID)
+	err = s.ChannelMessageDelete(util.Conf().ImageDumpID, image.ID)
 	messageEmbed := &discordgo.MessageEmbed{
 		Title:       "Absen Result",
 		Description: "Success",
