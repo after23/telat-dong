@@ -1,4 +1,4 @@
-package handlers
+package models
 
 type Result struct {
 	Status  int

@@ -1,11 +1,11 @@
-package handlers
+package models
 
 const (
 	Success = iota
 	Failed
 )
 
-var statusMap = map[int]string{
+var StatusMap = map[int]string{
 	Success: "Success",
 	Failed:  "Failed",
 }

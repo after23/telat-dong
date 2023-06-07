@@ -8,6 +8,9 @@ type Config struct {
 	PlaygroundID string `mapstructure:"PLAYGROUND_ID"`
 	ImageDumpID string `mapstructure:"IMAGE_DUMP_ID"`
 	NFGuildID string `mapstructure:"NF_GUILD_ID"`
+	StatusURL string `mapstructure:"STATUS_URL"`
+	AbsenURL string `mapstructure:"ABSEN_URL"`
+
 }
 
 var conf Config

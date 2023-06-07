@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/after23/telat-dong/models"
 	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
 )
 
-func initMessageEmbedEdit(s *discordgo.Session, channelID string, messageID string, embed *discordgo.MessageEmbed, res Result) {
-	newDesc := fmt.Sprintf("Status: %s", statusMap[res.Status])
-	if res.Status == Failed{
+func initMessageEmbedEdit(s *discordgo.Session, channelID string, messageID string, embed *discordgo.MessageEmbed, res models.Result) {
+	newDesc := fmt.Sprintf("Status: %s", models.StatusMap[res.Status])
+	if res.Status == models.Failed{
 		newDesc += fmt.Sprintf("\n%v", res.Message)
 	}
 	embed.Description = newDesc
@@ -49,51 +50,12 @@ func TempAbsen(s *discordgo.Session, channelID string, author_id string, config 
 		return
 	}
 
-	client := http.Client{
-		Timeout: 6 * time.Minute,
-	}
-	var res Result
-	//get request to the service
-	resp, err := client.Get("https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
-	if err != nil {
-		res.Status=Failed
-		res.Message=(fmt.Sprintf("Error doing Get Request: %v", err))
-		initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body,_ := ioutil.ReadAll(resp.Body)
-		res.Status=Failed
-		res.Message=fmt.Sprintf("Error - %d:\n%v", resp.StatusCode, string(body))
-		initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
-		return
-	}
-	// The image request has resolved successfully.
-	fmt.Println("Image request resolved.")
-
-	// Upload the file to Discord and get the attachment URL.
-	image, err := s.ChannelFileSend(util.Conf().ImageDumpID, "image.png", resp.Body)
-	if err != nil {
-		return
-	}
-	imageURL := image.Attachments[0].URL
-
-	err = s.ChannelMessageDelete(util.Conf().ImageDumpID, image.ID)
-	messageEmbed := &discordgo.MessageEmbed{
-		Title:       "Absen Result",
-		Description: "Success",
-		Image: &discordgo.MessageEmbedImage{
-			URL: imageURL, // URL of the image
-		},
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-	_, err = s.ChannelMessageSendEmbed(channelID, messageEmbed)
-	if err != nil {
-		log.Println("Error sending embed message(result): ", err)
-		return
-	}
-	res.Status=Success
+	ch := make(chan models.Result)
+	defer close(ch)
+	fmt.Println(util.Conf().AbsenURL)
+	fmt.Println(util.Conf().StatusURL)
+	go util.Request(s, ch, util.Conf().AbsenURL)
+	res := <- ch
 	initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
 
 }
@@ -116,7 +78,7 @@ func Ping(s *discordgo.Session, channelID string) {
 
 	resp, err := client.Get("https://telat-api.onrender.com/ping")
 	if err != nil {
-		embed.Description = fmt.Sprintf("Status: Failed\n%v", err)
+		embed.Description = fmt.Sprintf("Status: models.Failed\n%v", err)
 		embed.Timestamp = time.Now().Format(time.RFC3339)
 		s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
 		return
@@ -124,7 +86,7 @@ func Ping(s *discordgo.Session, channelID string) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		embed.Description = fmt.Sprintf("Status: Failed\n HTTP %d\n%v", resp.StatusCode, string(body))
+		embed.Description = fmt.Sprintf("Status: models.Failed\n HTTP %d\n%v", resp.StatusCode, string(body))
 		embed.Timestamp = time.Now().Format(time.RFC3339)
 		s.ChannelMessageEditEmbed(channelID, msg.ID, embed)
 		return
@@ -171,13 +133,13 @@ func Status(s *discordgo.Session, channelID, authorID string){
 		return
 	}
 
-	ch := make(chan Result)
+	ch := make(chan models.Result)
 	defer close(ch)
-	go status(s, ch)
+	go util.Request(s, ch, util.Conf().StatusURL)
 
 	res := <- ch
 	initMessageEmbedEdit(s, channelID, msg.ID, embed, res)
-	// if res.Status == Failed {
+	// if res.Status == models.Failed {
 	// 	return
 	// }
 	// embed.Title = "Check absen result"
@@ -194,62 +156,4 @@ func Status(s *discordgo.Session, channelID, authorID string){
 	// }
 	return
 	
-}
-
-func status(s *discordgo.Session,ch chan <- Result){
-	var res Result
-	client := http.Client{
-		Timeout: 6 * time.Minute,
-	}
-
-	resp, err := client.Get("https://telat-api.onrender.com/talenta/status/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
-	if err != nil {
-		res.Status = Failed
-		res.Message = fmt.Sprintf("Error doing HTTP GET\n%v", err)
-		ch <- res
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			res.Status = Failed
-			res.Message = fmt.Sprintf("Error reading body\n%v", err)
-			ch <- res
-			return
-		}
-		res.Status = Failed
-		res.Message = fmt.Sprintf("HTTP %d\n%v", resp.StatusCode, string(body))
-		ch <- res
-		return
-	}
-	fmt.Println("Image request resolved.")
-	
-	file := &discordgo.File{
-		Name: "image.png",
-		ContentType: "image/png",
-		Reader: resp.Body,
-	}
-	files := []*discordgo.File{file}
-	test := &discordgo.MessageSend{Files: files}
-	msg,err := s.ChannelMessageSendComplex(util.Conf().ImageDumpID, test)
-	if err != nil {
-		res.Status = Failed
-		res.Message = fmt.Sprintf("Error Uploading image\n%v", err)
-		ch <- res
-		return
-	}
-	imgUrl := msg.Attachments[0].URL
-
-	err = s.ChannelMessageDelete(util.Conf().ImageDumpID, msg.ID)
-	if err != nil {
-		log.Println("Failed to delete message: ", err)
-	}
-
-	res.Status=Success
-	res.Message="Status: Success"
-	res.URL=imgUrl
-	ch <- res
-	return
 }

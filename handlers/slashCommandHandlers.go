@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/after23/telat-dong/models"
 	"github.com/after23/telat-dong/util"
 	"github.com/bwmarrin/discordgo"
 )
@@ -43,12 +44,12 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 			Embeds: embeds,
 		},
 	})
-	ch := make(chan Result)
+	ch := make(chan models.Result)
 	go absen(ch, s, i.Interaction, config.ImageDumpID)
 
 	res := <- ch
 	embeds[0].Description = "Status: Finished"
-	if res.Status == Failed {
+	if res.Status == models.Failed {
 		embeds[0].Description = fmt.Sprintf("Status: Failed\n %s", res.Message)
 	}
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
@@ -56,15 +57,15 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 	})
 }
 
-func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, imageDumpChannel string ) {
+func absen(ch chan<- models.Result, s *discordgo.Session , i *discordgo.Interaction, imageDumpChannel string ) {
 	// Make an HTTP request to retrieve the image.
 	client := http.Client{
     Timeout: 6 * time.Minute,
 	}
 	resp, err := client.Get("https://telat-api.onrender.com/talenta/absen/?api-key=hQcx29p8gWXyq6wdQykFAxcpb8bqnwsx")
-	var res Result
+	var res models.Result
 	if err != nil {
-		res.Status = Failed
+		res.Status = models.Failed
 		res.Message = fmt.Sprintf("Error doing http request: %v", err)
 		ch <- res
 		return
@@ -72,8 +73,8 @@ func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, im
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body,_ := ioutil.ReadAll(resp.Body)
-		res = Result{
-			Status: Failed,
+		res = models.Result{
+			Status: models.Failed,
 			Message: fmt.Sprintf("Something went oopsies: %d - %s", resp.StatusCode, string(body)),
 		}
 		ch <- res
@@ -86,8 +87,8 @@ func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, im
 	// Upload the file to Discord and get the attachment URL.
 	msg, err := s.ChannelFileSend(imageDumpChannel , "image.png", resp.Body)
 	if err != nil {
-		res = Result{
-			Status: Failed,
+		res = models.Result{
+			Status: models.Failed,
 			Message: fmt.Sprintf("error sending image: %v", err),
 		}
 		ch <- res
@@ -99,8 +100,8 @@ func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, im
 	err = s.ChannelMessageDelete(imageDumpChannel, msg.ID)
 	
 	if err != nil {
-		res = Result{
-			Status: Failed,
+		res = models.Result{
+			Status: models.Failed,
 			Message: fmt.Sprintf("Failed Deleting Message %v", err),
 		}
 		return
@@ -116,15 +117,15 @@ func absen(ch chan<- Result, s *discordgo.Session , i *discordgo.Interaction, im
 		}
 	_, err = s.ChannelMessageSendEmbed(i.ChannelID, embed)
 		if err != nil {
-			res = Result{
-				Status: Failed,
+			res = models.Result{
+				Status: models.Failed,
 				Message: fmt.Sprintf("error sending Message Embed: %v", err),
 			}
 			ch <- res
 			return
 	}
-	res = Result{
-		Status: Success,
+	res = models.Result{
+		Status: models.Success,
 		Message: "",
 	}
 	ch <- res
@@ -152,7 +153,7 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *uti
 		return
 	}
 
-	ch := make(chan Result)
+	ch := make(chan models.Result)
 	go ping(ch)
 	defer close(ch)
 
@@ -191,16 +192,16 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *uti
 	return
 }
 
-func ping(ch chan<- Result){
+func ping(ch chan<- models.Result){
 	client := http.Client{
 		Timeout: 5 * time.Minute,
 	}
 
-	var res Result
+	var res models.Result
 
 	resp, err := client.Get("https://telat-api.onrender.com/ping")
 	if err != nil {
-		res.Status = Failed
+		res.Status = models.Failed
 		res.Message = fmt.Sprintf("Status: Failed\n%v", err)
 		ch <- res
 		return
@@ -208,7 +209,7 @@ func ping(ch chan<- Result){
 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK{
-		res.Status = Failed
+		res.Status = models.Failed
 		res.Message = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
 		ch <- res
 		return
@@ -216,13 +217,13 @@ func ping(ch chan<- Result){
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		res.Status = Failed
+		res.Status = models.Failed
 		res.Message = fmt.Sprintf("Status: Failed\n%v", err)
 		ch <- res
 		return
 	}
 
-	res.Status = Success
+	res.Status = models.Success
 	res.Message = fmt.Sprintf("Status: Success\n%s", string(body))
 	ch <- res
 	return
