@@ -41,6 +41,20 @@ func Request(s *discordgo.Session, ch chan<- models.Result, url string) {
 	}
 	fmt.Println("Image request resolved.")
 
+	if !(resp.Header.Get("Content-Type") == "image/png"){
+		body,err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			res.Status = models.Failed
+			res.Message = fmt.Sprintf("Error reading body\n%v", err)
+			ch <- res
+			return
+		}
+		res.Status = models.Success
+		res.Message = string(body)
+		ch <- res
+		return
+	}
+
 	file := &discordgo.File{
 		Name:        "image.png",
 		ContentType: "image/png",
