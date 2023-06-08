@@ -77,7 +77,6 @@ func Request(s *discordgo.Session, ch chan<- models.Result, url string) {
 	}
 
 	res.Status = models.Success
-	res.Message = "Status: Success"
 	res.URL = imgUrl
 	ch <- res
 	return
