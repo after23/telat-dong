@@ -45,12 +45,14 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 		},
 	})
 	ch := make(chan models.Result)
-	go absen(ch, s, i.Interaction, config.ImageDumpID)
+	defer close(ch)
+	go util.Request(s, ch, util.Conf().AbsenURL)
+	// go absen(ch, s, i.Interaction, config.ImageDumpID)
 
 	res := <- ch
-	embeds[0].Description = "Status: Finished"
+	embeds[0].Description = fmt.Sprintf("Status: %s", models.StatusMap[res.Status])
 	if res.Status == models.Failed {
-		embeds[0].Description = fmt.Sprintf("Status: Failed\n %s", res.Message)
+		embeds[0].Description = fmt.Sprintf("Status: %s\n %s", models.StatusMap[res.Status],res.Message)
 	}
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &embeds,
@@ -157,32 +159,6 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *uti
 	go ping(ch)
 	defer close(ch)
 
-	// client := http.Client{
-	// 	Timeout: 5 * time.Minute,
-	// }
-
-	// resp, err := client.Get("https://telat-api.onrender.com/ping")
-	// if err != nil {
-	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
-	// 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-	// 		Embeds: &embeds,
-	// 	})
-	// 	return
-	// }
-	// defer resp.Body.Close()
-	// if resp.StatusCode != http.StatusOK {
-	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\nHTTP %d", resp.StatusCode)
-	// 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-	// 		Embeds: &embeds,
-	// 	})
-	// 	return
-	// }
-
-	// body,err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	embeds[0].Description = fmt.Sprintf("Status: Failed\n%v", err)
-	// 	return
-	// }
 	res := <- ch
 	embeds[0].Description = res.Message
 	embeds[0].Timestamp = time.Now().Format(time.RFC3339)
