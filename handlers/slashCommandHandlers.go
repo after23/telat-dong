@@ -54,6 +54,11 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 	if res.Status == models.Failed {
 		embeds[0].Description = fmt.Sprintf("Status: %s\n %s", models.StatusMap[res.Status],res.Message)
 	}
+	if res.URL != "" {
+		embeds[0].Image = &discordgo.MessageEmbedImage{
+			URL: res.URL,
+		}
+	}
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &embeds,
 	})
