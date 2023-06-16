@@ -196,7 +196,7 @@ func main() {
 	log.Println("Adding commands...")
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
-		cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, config.PlaygroundID, v)
+		cmd, err := sess.ApplicationCommandCreate(sess.State.User.ID, util.Conf().NFGuildID, v)
 		if err != nil {
 			log.Printf("Cannot create '%v' command: %v.\nSkipping slash command.", v.Name, err)
 			break
@@ -212,7 +212,7 @@ func main() {
 	<-sc
 
 	for _, v := range registeredCommands {
-			err := sess.ApplicationCommandDelete(sess.State.User.ID, config.NFGuildID, v.ID)
+			err := sess.ApplicationCommandDelete(sess.State.User.ID, util.Conf().NFGuildID, v.ID)
 			if err != nil {
 				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 			}
