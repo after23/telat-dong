@@ -59,7 +59,7 @@ var (
 		// 	},
 		// },
 	}
-	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config){
+	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		"absen": handlers.Absen,
 		"hello": handlers.Hello,
 		"ping": handlers.SlashPing,
@@ -137,7 +137,7 @@ func init() {
 func init() {
 	sess.AddHandler(func(sess *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(sess, i, &config)
+			h(sess, i)
 		}
 	})
 }

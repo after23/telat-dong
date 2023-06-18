@@ -11,7 +11,7 @@ import (
 )
 
 
-func Hello(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config) {
+func Hello(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -20,7 +20,7 @@ func Hello(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 	})
 }
 
-func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config) {
+func Absen(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Member.User.ID != "188656104673247232"{
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -61,7 +61,7 @@ func Absen(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Co
 	})
 }
 
-func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *util.Config){
+func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate){
 	embed := &discordgo.MessageEmbed{
 		Title: "Pinging the Service",
 		Description: "Status: Processing..",
@@ -95,3 +95,4 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate, config *uti
 	return
 }
 
+// func SlashStatus(s *discordgo.Session, i *discordgo.InteractionCreate)
