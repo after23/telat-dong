@@ -95,4 +95,43 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate){
 	return
 }
 
-// func SlashStatus(s *discordgo.Session, i *discordgo.InteractionCreate)
+func SlashStatus(s *discordgo.Session, i *discordgo.InteractionCreate){
+	embed := &discordgo.MessageEmbed{
+		Title: "Checkin absen",
+		Description: "Status: Processing",
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	embeds := make([]*discordgo.MessageEmbed,1)
+	embeds = append(embeds, embed)
+
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: embeds,
+		},
+	})
+
+	if err != nil {
+		log.Println("Failed to send interaction respond")
+		return
+	}
+
+	ch := make(chan models.Result)
+	defer close(ch)
+	util.Request(s, ch, util.Conf().StatusURL)
+
+	res := <- ch
+	embeds[0].Description = fmt.Sprintf("Status: %s", models.StatusMap[res.Status])
+	if res.Status == models.Failed {
+		embeds[0].Description = fmt.Sprintf("Status: %s\n %s", models.StatusMap[res.Status],res.Message)
+	}
+	if res.URL != "" {
+		embeds[0].Image = &discordgo.MessageEmbedImage{
+			URL: res.URL,
+		}
+	}
+	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Embeds: &embeds,
+	})
+}
