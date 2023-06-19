@@ -45,11 +45,17 @@ func absen(s *discordgo.Session, i *discordgo.InteractionCreate, url string){
 			Embeds: embeds,
 		},
 	})
-	ch := make(chan models.Result)
-	defer close(ch)
-	go util.Request(s, ch, url)
+	chanOwner := func() <-chan models.Result {
+		ch := make(chan models.Result)
+		go func() {
+			defer close(ch)
+			util.Request(s, ch, url)
+		}()
+		return ch
+	}
 
-	res := <- ch
+	
+	res := <-chanOwner()
 	embeds[0].Description = fmt.Sprintf("Status: %s", models.StatusMap[res.Status])
 	if res.Status == models.Failed {
 		embeds[0].Description = fmt.Sprintf("Status: %s\n %s", models.StatusMap[res.Status],res.Message)
