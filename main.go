@@ -36,6 +36,10 @@ var (
 			Name: "ping",
 			Description: "Bangunin service",
 		},
+		{
+			Name: "status",
+			Description: "Check absen status",
+		},
 		// {
 		// 	Name: "responses",
 		// 	Description: "responses",
@@ -63,6 +67,7 @@ var (
 		"absen": handlers.Absen,
 		"hello": handlers.Hello,
 		"ping": handlers.SlashPing,
+		"status": handlers.SlashStatus,
 		// "responses": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		// 	// Responses to a command are very important.
 		// 	// First of all, because you need to react to the interaction
