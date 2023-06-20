@@ -39,8 +39,7 @@ func Request(s *discordgo.Session, ch chan<- models.Result, url string) {
 		ch <- res
 		return
 	}
-	fmt.Println("Image request resolved.")
-
+	
 	if !(resp.Header.Get("Content-Type") == "image/png"){
 		body,err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -52,6 +51,7 @@ func Request(s *discordgo.Session, ch chan<- models.Result, url string) {
 		res.Status = models.Success
 		res.Message = string(body)
 		ch <- res
+		fmt.Println("Image request resolved.")
 		return
 	}
 
