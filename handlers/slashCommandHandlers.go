@@ -112,3 +112,30 @@ func SlashPing(s *discordgo.Session, i *discordgo.InteractionCreate){
 	return
 }
 
+func SlashSkip(s *discordgo.Session, i *discordgo.InteractionCreate){
+	embed := &discordgo.MessageEmbed{
+		Title: "Skip",
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	embed.Image = &discordgo.MessageEmbedImage{
+		URL: "https://cdn.discordapp.com/attachments/1112298002938347550/1113268135169118208/gdlu.jpg",
+	}
+	embeds := []*discordgo.MessageEmbed{embed}
+
+	respData := &discordgo.InteractionResponseData{
+		Embeds: embeds,
+	}
+
+	resp := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: respData,
+	}
+
+	err := s.InteractionRespond(i.Interaction, resp)
+
+	if err != nil {
+		log.Println("SlashSkip Error: ", err)
+		return
+	}
+}
+
